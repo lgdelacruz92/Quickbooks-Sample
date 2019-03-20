@@ -85,6 +85,7 @@
     <Content Include="Images\Get_App.png" />
     <Content Include="Images\IntuitSignIn-lg-white%402x.jpg" />
     <Content Include="OAuth2Manager.aspx" />
+    <Content Include="TestWebForm.aspx" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>
     </Content>
@@ -102,6 +103,13 @@
       <DependentUpon>OAuth2Manager.aspx</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TestWebForm.aspx.cs">
+      <DependentUpon>TestWebForm.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="TestWebForm.aspx.designer.cs">
+      <DependentUpon>TestWebForm.aspx</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Content\" />

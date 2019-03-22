@@ -96,6 +96,7 @@
      <p>
     <asp:label runat="server" id="lblQBOCall" visible="false"></asp:label>
     </p>
+     <asp:Button ID="Button1" runat="server" OnClick="TestInvoice" Text="TestInvoice" />
      <br />
 
        <br /><br /><br />

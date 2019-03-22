@@ -26,6 +26,7 @@ namespace OAuth2_SampleApp_Dotnet
         static string clientSecret = ConfigurationManager.AppSettings["clientSecret"];
         static string qboBaseUrl = ConfigurationManager.AppSettings["qboBaseUrl"];
         static string logPath = ConfigurationManager.AppSettings["logPath"];
+        private static int minorVersion = 4;
 
 
         static string scopeValC2QB = System.Uri.EscapeDataString(ConfigurationManager.AppSettings["scopeValC2QB"]);
@@ -49,6 +50,7 @@ namespace OAuth2_SampleApp_Dotnet
 
         string incoming_state = "";
         string realmId = "";
+        private string customerIdToken;
 
 
         protected void Page_PreInit(object sender, EventArgs e)
@@ -77,7 +79,8 @@ namespace OAuth2_SampleApp_Dotnet
                     // Check for errors.
                     if (queryKeys.Contains("error") == true)
                     {
-                        output(String.Format("OAuth authorization error: {0}.", Request.QueryString["error"].ToString()));
+                        String outputStr = String.Format("OAuth authorization error: {0}.", Request.QueryString["error"].ToString());
+                        output(outputStr);
                         return;
                     }
                     if (queryKeys.Contains("code") == false
@@ -451,6 +454,7 @@ namespace OAuth2_SampleApp_Dotnet
                     {
 
                         id_token = accesstokenEndpointDecoded["id_token"];
+                        customerIdToken = id_token;
                         //validate idToken
                         isTokenValid = isIdTokenValid(id_token);
                     }
@@ -498,7 +502,7 @@ namespace OAuth2_SampleApp_Dotnet
                         }
                     }
 
-                   
+
                     if (Session["callMadeby"].ToString() == "OpenId")
                     {
 
@@ -553,6 +557,7 @@ namespace OAuth2_SampleApp_Dotnet
             }
 
         }
+
 
         private void performRefreshToken(string refresh_token)
         {
@@ -1203,11 +1208,109 @@ namespace OAuth2_SampleApp_Dotnet
             return Convert.FromBase64String(base64);
         }
 
+
+
+
         #endregion
 
+        protected void TestInvoice(object sender, EventArgs e)
+        {
+            if (Session["realmId"] != null)
+            {
+                if (Session["accessToken"] != null && Session["refreshToken"] != null)
+                {
+
+                    String access_token = Session["accessToken"].ToString();
+                    String refresh_token = Session["refreshToken"].ToString();
+                    String realmId = Session["realmId"].ToString();
+                    try
+                    {
+                        if (realmId != "")
+                        {
+                            output("Making QBO API Call.");
 
 
+                            //add qbobase url and query
+                            string uri = string.Format("https://{0}/v3/company/{1}/invoice?minorversion={2}", qboBaseUrl, realmId, minorVersion);
 
+
+                            // send the request
+                            HttpWebRequest qboApiRequest = (HttpWebRequest)WebRequest.Create(uri);
+                            qboApiRequest.Method = "GET";
+                            qboApiRequest.Headers.Add(string.Format("Authorization: Bearer {0}", access_token));
+                            qboApiRequest.ContentType = "application/json;charset=UTF-8";
+                            qboApiRequest.Accept = "application/json";
+
+
+                            // get the response
+                            HttpWebResponse qboApiResponse = (HttpWebResponse)qboApiRequest.GetResponse();
+                            if (qboApiResponse.StatusCode == HttpStatusCode.Unauthorized)//401
+                            {
+                                output("Invalid/Expired Access Token.");
+                                //if you get a 401 token expiry then perform token refresh
+                                performRefreshToken(refresh_token);
+
+                                //Retry QBO API call again with new tokens
+                                if (Session["accessToken"] != null && Session["refreshToken"] != null && Session["realmId"] != null)
+                                {
+                                    qboApiCall(Session["accessToken"].ToString(), Session["refreshToken"].ToString(), Session["realmId"].ToString());
+                                }
+
+
+                            }
+                            else
+                            {
+                                //read qbo api response
+                                using (var qboApiReader = new StreamReader(qboApiResponse.GetResponseStream()))
+                                {
+                                    string responseText = qboApiReader.ReadToEnd();
+                                    output("QBO call successful.");
+                                    lblQBOCall.Visible = true;
+                                    lblQBOCall.Text = "QBO Call successful";
+
+                                }
+
+                            }
+
+                        }
+
+                    }
+                    catch (WebException ex)
+                    {
+                        if (ex.Status == WebExceptionStatus.ProtocolError)
+                        {
+                            var response = ex.Response as HttpWebResponse;
+                            if (response != null)
+                            {
+
+                                output("HTTP Status: " + response.StatusCode);
+                                var exceptionDetail = response.GetResponseHeader("WWW-Authenticate");
+                                if (exceptionDetail != null && exceptionDetail != "")
+                                {
+                                    output(exceptionDetail);
+                                }
+                                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                                {
+                                    // read response body
+                                    string responseText = reader.ReadToEnd();
+                                    if (responseText != null && responseText != "")
+                                    {
+                                        output(responseText);
+                                    }
+                                }
+                            }
+
+                        }
+                    }
+                }
+            }
+            else
+            {
+                output("SIWI call does not returns realm for QBO qbo api call.");
+                lblQBOCall.Visible = true;
+                lblQBOCall.Text = "SIWI call does not returns realm for QBO qbo api call";
+            }
+        }
     }
 
     //Extension method for Redirect
